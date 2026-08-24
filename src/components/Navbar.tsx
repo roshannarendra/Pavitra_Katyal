@@ -35,7 +35,7 @@ export default function Navbar() {
       <nav className="flex items-center justify-between bg-white rounded-full p-[5px]">
         <div className="flex items-center gap-6">
           <Link to="/" className="flex items-center">
-            <img src="/kroshet-logo.png" alt="The Kroshet" className="h-7 sm:h-8 w-auto" />
+            <img src={`${import.meta.env.BASE_URL}kroshet-logo.png`} alt="The Kroshet" className="h-7 sm:h-8 w-auto" />
           </Link>
           <div className="hidden md:flex items-center gap-6">
             {NAV_LINKS.map((link) => (

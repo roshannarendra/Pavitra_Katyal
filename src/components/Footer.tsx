@@ -49,7 +49,7 @@ export default function Footer() {
             />
 
             <Link to="/" className="relative flex items-center bg-white rounded-xl px-3 py-2 w-fit">
-              <img src="/kroshet-logo.png" alt="The Kroshet" className="h-7 w-auto" />
+              <img src={`${import.meta.env.BASE_URL}kroshet-logo.png`} alt="The Kroshet" className="h-7 w-auto" />
             </Link>
 
             <div className="relative">
