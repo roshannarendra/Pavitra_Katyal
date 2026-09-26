@@ -1,8 +1,8 @@
-import { useMemo, useRef, useState, type MouseEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowUpRight, Crown } from 'lucide-react'
 import Navbar from './Navbar'
 import PartnerIcon from './PartnerIcon'
+import CharacterGaze from './CharacterGaze'
 import { useCountUp } from '../hooks/useCountUp'
 
 const STATS = [
@@ -10,78 +10,6 @@ const STATS = [
   { value: 95, suffix: '%', label: 'Client Retention' },
   { value: 10, suffix: '+', label: 'Years in the Game' },
 ]
-
-const TAU = Math.PI * 2
-
-// Discrete "poses" the yarn ball can snap to, indexed by angle — the same
-// nearest-match idea as a gaze-frame video scrub, but each frame here is a
-// precomputed CSS transform instead of a video timestamp.
-const POSE_COUNT = 16
-const POSES = Array.from({ length: POSE_COUNT }, (_, i) => {
-  const angle = (i / POSE_COUNT) * TAU
-  return {
-    angle,
-    rotate: Math.round(Math.sin(angle) * 9 * 10) / 10,
-    tx: Math.round(Math.cos(angle) * 14 * 10) / 10,
-    ty: Math.round(Math.sin(angle) * 10 * 10) / 10,
-  }
-})
-const HOME_POSE = { rotate: 0, tx: 0, ty: 0 }
-
-function nearestPose(angle: number) {
-  const normalized = ((angle % TAU) + TAU) % TAU
-  let nearest = POSES[0]
-  let nearestDistance = Infinity
-  for (const pose of POSES) {
-    const diff = Math.abs(normalized - pose.angle)
-    const distance = Math.min(diff, TAU - diff)
-    if (distance < nearestDistance) {
-      nearestDistance = distance
-      nearest = pose
-    }
-  }
-  return nearest
-}
-
-function YarnBall({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 240 240" className={className} fill="none">
-      <defs>
-        <radialGradient id="yarnFill" cx="35%" cy="30%" r="75%">
-          <stop offset="0%" stopColor="#ffffff" />
-          <stop offset="45%" stopColor="#ffd7ea" />
-          <stop offset="100%" stopColor="#ff2070" />
-        </radialGradient>
-      </defs>
-
-      {/* knitting needles */}
-      <line x1="42" y1="196" x2="150" y2="18" stroke="#1a1120" strokeWidth="6" strokeLinecap="round" />
-      <circle cx="150" cy="18" r="7" fill="#1a1120" />
-      <line x1="198" y1="196" x2="90" y2="18" stroke="#1a1120" strokeWidth="6" strokeLinecap="round" />
-      <circle cx="90" cy="18" r="7" fill="#1a1120" />
-
-      {/* ball */}
-      <circle cx="120" cy="128" r="82" fill="url(#yarnFill)" />
-
-      {/* wound-thread arcs */}
-      <path d="M 45 100 C 90 60, 150 60, 195 100" stroke="#ffffff" strokeOpacity="0.7" strokeWidth="4" strokeLinecap="round" />
-      <path d="M 40 135 C 90 175, 150 175, 200 135" stroke="#ffffff" strokeOpacity="0.7" strokeWidth="4" strokeLinecap="round" />
-      <path d="M 55 75 C 100 130, 140 130, 185 75" stroke="#c81163" strokeOpacity="0.55" strokeWidth="4" strokeLinecap="round" />
-      <path d="M 55 178 C 100 122, 140 122, 185 178" stroke="#c81163" strokeOpacity="0.55" strokeWidth="4" strokeLinecap="round" />
-      <path d="M 38 128 C 70 128, 170 128, 202 128" stroke="#ffffff" strokeOpacity="0.5" strokeWidth="3" strokeLinecap="round" />
-
-      {/* trailing loose thread */}
-      <path
-        d="M 70 195 C 45 205, 30 225, 40 236"
-        stroke="#c81163"
-        strokeWidth="5"
-        strokeLinecap="round"
-        fill="none"
-      />
-      <circle cx="40" cy="236" r="4" fill="#c81163" />
-    </svg>
-  )
-}
 
 function StatBlock({ value, suffix, label }: { value: number; suffix: string; label: string }) {
   const count = useCountUp(value, true, 1600)
@@ -99,38 +27,8 @@ function StatBlock({ value, suffix, label }: { value: number; suffix: string; la
 }
 
 export default function Hero() {
-  const visualRef = useRef<HTMLDivElement>(null)
-  const [pose, setPose] = useState(HOME_POSE)
-  const reducedMotion = useMemo(
-    () =>
-      typeof window !== 'undefined' &&
-      window.matchMedia('(prefers-reduced-motion: reduce)').matches,
-    [],
-  )
-
-  function handleMouseMove(e: MouseEvent<HTMLDivElement>) {
-    if (reducedMotion) return
-    const el = visualRef.current
-    if (!el) return
-    const rect = el.getBoundingClientRect()
-    const cx = rect.left + rect.width / 2
-    const cy = rect.top + rect.height / 2
-    const dx = e.clientX - cx
-    const dy = e.clientY - cy
-    if (Math.hypot(dx, dy) < 8) return
-    setPose(nearestPose(Math.atan2(dy, dx)))
-  }
-
-  function handleMouseLeave() {
-    setPose(HOME_POSE)
-  }
-
   return (
-    <section
-      onMouseMove={handleMouseMove}
-      onMouseLeave={handleMouseLeave}
-      className="relative min-h-screen bg-gradient-to-br from-[#c81163] via-[#e01470] to-[#ff2070] flex flex-col overflow-hidden"
-    >
+    <section className="relative min-h-screen bg-gradient-to-br from-[#c81163] via-[#e01470] to-[#ff2070] flex flex-col overflow-hidden">
       <div
         aria-hidden
         className="animate-blob pointer-events-none absolute top-1/3 right-[8%] w-[420px] h-[420px] rounded-full bg-white/10 blur-[100px]"
@@ -207,7 +105,7 @@ export default function Hero() {
             </div>
           </div>
 
-          {/* Right: yarn ball visual with cursor-follow parallax */}
+          {/* Right: cursor-tracked character (video-scrub gaze) */}
           <div className="relative flex items-end justify-center lg:justify-end min-h-[280px] sm:min-h-[360px] lg:min-h-[440px]">
             <div
               aria-hidden
@@ -217,12 +115,8 @@ export default function Hero() {
               aria-hidden
               className="absolute bottom-0 w-[55%] max-w-[260px] h-10 sm:h-14 rounded-[50%] bg-black/30 blur-md"
             />
-            <div
-              ref={visualRef}
-              className="relative w-[220px] sm:w-[280px] lg:w-[320px] transition-transform duration-[420ms] ease-[cubic-bezier(0.34,1.4,0.64,1)] will-change-transform"
-              style={{ transform: `translate(${pose.tx}px, ${pose.ty}px) rotate(${pose.rotate}deg)` }}
-            >
-              <YarnBall className="w-full h-full drop-shadow-[0_25px_40px_rgba(0,0,0,0.35)]" />
+            <div className="relative w-[260px] sm:w-[340px] lg:w-[400px] aspect-square rounded-full overflow-hidden shadow-[0_25px_50px_rgba(0,0,0,0.35)] border-4 border-white/20">
+              <CharacterGaze className="w-full h-full object-cover" />
             </div>
           </div>
         </div>
