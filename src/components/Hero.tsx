@@ -1,4 +1,4 @@
-import { useRef, type MouseEvent } from 'react'
+import { useMemo, useRef, useState, type MouseEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowUpRight, Crown } from 'lucide-react'
 import Navbar from './Navbar'
@@ -10,6 +10,38 @@ const STATS = [
   { value: 95, suffix: '%', label: 'Client Retention' },
   { value: 10, suffix: '+', label: 'Years in the Game' },
 ]
+
+const TAU = Math.PI * 2
+
+// Discrete "poses" the yarn ball can snap to, indexed by angle — the same
+// nearest-match idea as a gaze-frame video scrub, but each frame here is a
+// precomputed CSS transform instead of a video timestamp.
+const POSE_COUNT = 16
+const POSES = Array.from({ length: POSE_COUNT }, (_, i) => {
+  const angle = (i / POSE_COUNT) * TAU
+  return {
+    angle,
+    rotate: Math.round(Math.sin(angle) * 9 * 10) / 10,
+    tx: Math.round(Math.cos(angle) * 14 * 10) / 10,
+    ty: Math.round(Math.sin(angle) * 10 * 10) / 10,
+  }
+})
+const HOME_POSE = { rotate: 0, tx: 0, ty: 0 }
+
+function nearestPose(angle: number) {
+  const normalized = ((angle % TAU) + TAU) % TAU
+  let nearest = POSES[0]
+  let nearestDistance = Infinity
+  for (const pose of POSES) {
+    const diff = Math.abs(normalized - pose.angle)
+    const distance = Math.min(diff, TAU - diff)
+    if (distance < nearestDistance) {
+      nearestDistance = distance
+      nearest = pose
+    }
+  }
+  return nearest
+}
 
 function YarnBall({ className }: { className?: string }) {
   return (
@@ -68,20 +100,29 @@ function StatBlock({ value, suffix, label }: { value: number; suffix: string; la
 
 export default function Hero() {
   const visualRef = useRef<HTMLDivElement>(null)
+  const [pose, setPose] = useState(HOME_POSE)
+  const reducedMotion = useMemo(
+    () =>
+      typeof window !== 'undefined' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+    [],
+  )
 
   function handleMouseMove(e: MouseEvent<HTMLDivElement>) {
+    if (reducedMotion) return
     const el = visualRef.current
     if (!el) return
-    const rect = e.currentTarget.getBoundingClientRect()
-    const px = (e.clientX - rect.left) / rect.width - 0.5
-    const py = (e.clientY - rect.top) / rect.height - 0.5
-    el.style.transform = `translate(${px * -28}px, ${py * -22}px) rotate(${px * 6}deg)`
+    const rect = el.getBoundingClientRect()
+    const cx = rect.left + rect.width / 2
+    const cy = rect.top + rect.height / 2
+    const dx = e.clientX - cx
+    const dy = e.clientY - cy
+    if (Math.hypot(dx, dy) < 8) return
+    setPose(nearestPose(Math.atan2(dy, dx)))
   }
 
   function handleMouseLeave() {
-    const el = visualRef.current
-    if (!el) return
-    el.style.transform = ''
+    setPose(HOME_POSE)
   }
 
   return (
@@ -178,7 +219,8 @@ export default function Hero() {
             />
             <div
               ref={visualRef}
-              className="relative w-[220px] sm:w-[280px] lg:w-[320px] transition-transform duration-300 ease-out will-change-transform"
+              className="relative w-[220px] sm:w-[280px] lg:w-[320px] transition-transform duration-[420ms] ease-[cubic-bezier(0.34,1.4,0.64,1)] will-change-transform"
+              style={{ transform: `translate(${pose.tx}px, ${pose.ty}px) rotate(${pose.rotate}deg)` }}
             >
               <YarnBall className="w-full h-full drop-shadow-[0_25px_40px_rgba(0,0,0,0.35)]" />
             </div>
